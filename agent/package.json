@@ -1,0 +1,25 @@
+{
+  "name": "cloud-gaming-agent",
+  "version": "1.0.0",
+  "description": "Agente Windows para escritorio remoto gaming",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
+  },
+  "dependencies": {
+    "robotjs": "^0.6.0",
+    "screenshot-desktop": "^1.15.0",
+    "socket.io-client": "^4.7.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
