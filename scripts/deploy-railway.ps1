@@ -132,7 +132,9 @@ $code = Invoke-Railway -CmdArgs @('variable', 'set', 'CORS_ORIGIN=*', '--service
 if ($code -ne 0) { throw "railway variable set CORS_ORIGIN falló" }
 
 Write-Host "== 5/8 Desplegando backend ==" -ForegroundColor Cyan
-$code = Invoke-Railway -CmdArgs @('up', '--detach', '--service', 'backend') -WorkDir "$Root\backend"
+# PATH + --path-as-root: sube SOLO la carpeta backend/ (sin esto, railway up
+# sube el proyecto completo y el builder no encuentra el Dockerfile)
+$code = Invoke-Railway -CmdArgs @('up', 'backend', '--path-as-root', '--service', 'backend', '--detach') -WorkDir $Root
 if ($code -ne 0) { throw "railway up (backend) falló" }
 
 $backendDomain = Ensure-Domain 'backend'
@@ -145,7 +147,7 @@ $code = Invoke-Railway -CmdArgs @('variable', 'set', "VITE_BACKEND_URL=$backendU
 if ($code -ne 0) { throw "railway variable set VITE_BACKEND_URL falló" }
 
 Write-Host "== 7/8 Desplegando frontend ==" -ForegroundColor Cyan
-$code = Invoke-Railway -CmdArgs @('up', '--detach', '--service', 'frontend') -WorkDir "$Root\frontend"
+$code = Invoke-Railway -CmdArgs @('up', 'frontend', '--path-as-root', '--service', 'frontend', '--detach') -WorkDir $Root
 if ($code -ne 0) { throw "railway up (frontend) falló" }
 
 $frontendDomain = Ensure-Domain 'frontend'
