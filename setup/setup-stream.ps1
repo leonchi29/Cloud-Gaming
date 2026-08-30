@@ -116,14 +116,40 @@ Write-Step 6 "Instalando agente como tarea programada de Windows"
 if ($LASTEXITCODE -ne 0) { Fail "La instalación del agente falló." }
 
 # ---------------------------------------------------------------
-Write-Step 7 "Verificación"
-Start-Sleep -Seconds 8
+Write-Step 7 "Verificación de conexión con el backend"
+
+# Espera activa: el agente tarda unos segundos en registrarse. Se comprueba
+# contra el backend real (online=true) en lugar de solo el estado de la tarea.
+$agentOnline = $false
+foreach ($i in 1..15) {
+    Start-Sleep -Seconds 3
+    try {
+        $status = Invoke-RestMethod -Uri "$BackendUrl/status" -TimeoutSec 10
+        if ($status.online -eq $true) {
+            $agentOnline = $true
+            break
+        }
+    } catch {
+        # backend aún no responde; reintentar
+    }
+    Write-Host "  Esperando al agente... ($i/15)"
+}
 
 $task = Get-ScheduledTask -TaskName 'CloudGamingAgent' -ErrorAction SilentlyContinue
-if ($task -and $task.State -eq 'Running') {
-    Write-Host "  Agente: en ejecución" -ForegroundColor Green
+$taskState = if ($task) { $task.State } else { 'NO INSTALADA' }
+
+if ($agentOnline) {
+    Write-Host "  Agente: CONECTADO al backend (online=true)" -ForegroundColor Green
+    Write-Host "  Estado de la tarea: $taskState" -ForegroundColor Green
 } else {
-    Write-Warning "  El agente no aparece en ejecución. Revisa: scripts\maintenance.ps1 -Action status"
+    Write-Warning "  El agente NO conectó con el backend tras 45s."
+    Write-Warning "  Estado de la tarea: $taskState"
+    Write-Host ""
+    Write-Host "  Diagnóstico:" -ForegroundColor Yellow
+    Write-Host "    1. Revisa el log: Get-Content $Root\agent\logs\agent.log -Tail 30"
+    Write-Host "    2. Comprueba que BACKEND_URL y AGENT_TOKEN son correctos en agent\.env"
+    Write-Host "    3. Verifica que el backend responde: Invoke-RestMethod $BackendUrl/status"
+    Write-Host "    4. Estado completo: scripts\maintenance.ps1 -Action status"
 }
 
 $sunshine = Get-Process -Name 'sunshine' -ErrorAction SilentlyContinue
@@ -139,6 +165,7 @@ Write-Host "  PC DE STREAM LISTO" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Backend configurado: $BackendUrl" -ForegroundColor Green
+Write-Host "  Agente conectado:    $(if ($agentOnline) { 'SÍ' } else { 'NO (ver diagnóstico arriba)' })" -ForegroundColor $(if ($agentOnline) { 'Green' } else { 'Red' })
 Write-Host ""
 Write-Host "  El agente arranca solo con Windows y se reconecta solo." -ForegroundColor Yellow
 Write-Host "  Ya puedes cerrar esta ventana. En el PC dev abre la URL" -ForegroundColor Yellow

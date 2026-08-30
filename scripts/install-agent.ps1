@@ -44,7 +44,8 @@ if (Test-Path `$envFile) {
     }
 }
 Set-Location '$AgentPath'
-& '$nodePath' '$EntryPoint'
+New-Item -ItemType Directory -Path '$AgentPath\logs' -Force | Out-Null
+& '$nodePath' '$EntryPoint' *>> '$AgentPath\logs\agent.log'
 "@
 
 $wrapperPath = Join-Path $AgentPath 'start-agent.ps1'
@@ -71,8 +72,12 @@ $settings = New-ScheduledTaskSettingsSet `
     -StartWhenAvailable `
     -MultipleInstances IgnoreNew
 
-# Ejecutar como SYSTEM con máximos privilegios → funciona sin sesión iniciada y en segundo plano
-$principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+# Ejecutar como el USUARIO ACTUAL con sesión interactiva (S4U = sin pedir contraseña).
+# SYSTEM NO sirve: no tiene sesión gráfica, por lo que la captura de pantalla y
+# robotjs (teclado/ratón) fallarían. S4U permite arrancar sin login interactivo.
+$currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+$principal = New-ScheduledTaskPrincipal -UserId $currentUser -LogonType S4U -RunLevel Highest
+Write-Host "La tarea correrá como: $currentUser"
 
 Register-ScheduledTask `
     -TaskName $TaskName `
@@ -86,6 +91,7 @@ Start-ScheduledTask -TaskName $TaskName
 
 Write-Host ""
 Write-Host "Agente instalado y arrancado." -ForegroundColor Green
+Write-Host "  Log:           $AgentPath\logs\agent.log"
 Write-Host "  Ver estado:    Get-ScheduledTask -TaskName '$TaskName' | Get-ScheduledTaskInfo"
 Write-Host "  Detener:       Stop-ScheduledTask -TaskName '$TaskName'"
 Write-Host "  Desinstalar:   Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false"

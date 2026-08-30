@@ -70,7 +70,12 @@ switch ($Action) {
         Write-Host "  Red:      $($net.Count) adaptador(es) activo(s)"
     }
     'logs' {
-        Write-Host "El agente registra en consola. Para capturar logs persistentes, redirige la salida"
-        Write-Host "en start-agent.ps1:  & node dist\index.js *>> logs\agent.log"
+        $logFile = Join-Path (Resolve-Path "$PSScriptRoot\..\agent").Path 'logs\agent.log'
+        if (Test-Path $logFile) {
+            Write-Host "== Últimas 40 líneas de $logFile ==" -ForegroundColor Cyan
+            Get-Content $logFile -Tail 40
+        } else {
+            Write-Host "No existe $logFile todavía (el agente aún no ha escrito logs)." -ForegroundColor Yellow
+        }
     }
 }
